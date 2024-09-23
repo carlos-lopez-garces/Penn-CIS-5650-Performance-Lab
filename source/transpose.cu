@@ -15,6 +15,8 @@
 // Initialize sizes
 const int sizeX = 1234;
 const int sizeY = 3153;
+const int blockSizeX = 16;
+const int blockSizeY = 16;
 
 struct DIMS
 {
@@ -81,12 +83,16 @@ void preprocess(float *res, float *dev_res, int n)
 // TODO: COMPLETE THIS
 __global__ void copyKernel(const float* const a, float* const b)
 {
-    int i = 0;  // Compute correctly - Global X index
-    int j = 0;  // Compute correctly - Global Y index
+    int i = blockIdx.x*blockDim.x + threadIdx.x;  // Compute correctly - Global X index
+    int j = blockIdx.y*blockDim.y + threadIdx.y;  // Compute correctly - Global Y index
 
     // Check if i or j are out of bounds. If they are, return.
+    if (i >= sizeX || j >= sizeY)
+    {
+        return;
+    }
 
-    int index = 0;      // Compute 1D index from i, j
+    int index = j*sizeX + i;      // Compute 1D index from i, j
 
     // Copy data from A to B
     b[index] = a[index];
@@ -250,10 +256,12 @@ int main(int argc, char *argv[])
         // Assign a 2D distribution of BS_X x BS_Y x 1 CUDA threads within
         // Calculate number of blocks along X and Y in a 2D CUDA "grid"
         DIMS dims;
-        dims.dimBlock = dim3(1, 1, 1);
-        dims.dimGrid  = dim3(1,
-                             1,
-                             1);
+        dims.dimBlock = dim3(blockSizeX, blockSizeY, 1);
+        dims.dimGrid  = dim3(
+            (sizeX + blockSizeX - 1) / blockSizeX,
+            (sizeY + blockSizeY - 1) / blockSizeY,
+            1
+        );
 
         // start the timer
         nvtxRangeId_t copyKernelBenchmark = nvtxRangeStart("Device to Device Copy");
